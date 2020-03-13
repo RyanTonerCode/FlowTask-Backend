@@ -11,17 +11,18 @@ namespace FlowTask_Backend
 
         public int UserId { get; private set; }
         public string HashedPassword { get; private set; }
+        private string username;
         public string Username { 
             get {
-                return Username.ToLowerInvariant();
+                return username.ToLowerInvariant();
             } 
-            private set { 
-                Username = value.ToLowerInvariant(); 
+            private set {
+                username = value.ToLowerInvariant(); 
             } 
         }
         public string FirstName { get; private set; }
         public string LastName { get; private set; }
-        public string Email { get; private  set; }
+        public string Email { get; private set; }
         internal Task[] Task { get; private set; }
 
         public User(string username, string firstName, string lastName, string email, string hashedPassword)

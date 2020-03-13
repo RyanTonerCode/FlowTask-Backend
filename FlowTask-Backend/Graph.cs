@@ -8,28 +8,51 @@ namespace FlowTask_Backend
 {
     class Graph
     {
-        public int GraphID { get; set; }
-        internal Node[] Nodes { get; set; }
-        public int[][] Adjacencies { get; set; }
+        public int GraphID { get; private set; }
+        public List<Node> Nodes { get; private set; }
+        public List<(int,int)> Adjacencies { get; private set; }
 
-        public Graph(int graphID, Node[] nodes, int[][] adjacencies )
+        public Graph()
         {
-
+            Nodes = new List<Node>();
+            Adjacencies = new List<(int, int)>();
         }
 
-        DateTime processDate(Node n)
+        public Graph(int graphID, List<Node> nodes, string DBAdjacency)
         {
-            return (DateTime)(new object());
+            GraphID = graphID;
+            Adjacencies = new List<(int, int)>();
+
+            Nodes = nodes;
+            var tuples = DBAdjacency.Split(";");
+            foreach (var s in tuples)
+            {
+                var coords = s.Split(",");
+
+                int id1 = int.Parse(coords[0]);
+                int id2 = int.Parse(coords[1]);
+
+                Adjacencies.Add((id1, id2));
+            }
         }
 
-        int createEdge(Node a, Node b)
+        public string GetDBFormatAdjacency()
         {
-            return 0;
+            StringBuilder sb = new StringBuilder();
+            foreach(var x in Adjacencies)
+                sb.Append(x.Item1).Append(",").Append(x.Item2).Append(";");
+            return sb.ToString().Substring(sb.Length - 1);
         }
 
-        Node createNode(String process, int timeweight, bool complete)
+        public void CreateEdge(Node a, Node b)
         {
-            return null;
+            Adjacencies.Add((a.NodeIndex, b.NodeIndex));
+        }
+
+        public void AddNode(Node n)
+        {
+            n.NodeIndex = Nodes.Count;
+            Nodes.Add(n);
         }
     }
 }

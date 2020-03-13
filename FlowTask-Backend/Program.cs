@@ -6,8 +6,6 @@ namespace FlowTask_Backend
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
-
             var db = DatabaseController.dbController;
 
 
@@ -16,7 +14,7 @@ namespace FlowTask_Backend
 
             var User = db.GetUser("ryanat", "test");
 
-            //db.WriteUser(ryan);
+            //var res = db.WriteUser(ryan);
 
             Console.ReadLine();
         }
