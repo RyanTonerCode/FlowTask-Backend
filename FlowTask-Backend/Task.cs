@@ -14,7 +14,6 @@ namespace FlowTask_Backend
         public DateTime SubmissionDate { get; set; }
         public string Category { get; set; }
         public int[] UserIDs { get; set; }
-        internal Decomposition Decomp { get; set; }
 
         public Task(int taskID, string assignmentName, int decompID, DateTime submissionDate, string category, int[] userIDs)
         {
