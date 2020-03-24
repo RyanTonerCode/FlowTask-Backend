@@ -35,9 +35,6 @@ namespace FlowTask_Backend
         {
             const string sqlQuery = @"SELECT Username, Email FROM UserTable WHERE Username = @username OR Email = @email";
 
-            DataTable dt = new DataTable();
-
-
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
             cmd.Parameters.AddWithValue("@username", username);
             cmd.Parameters.AddWithValue("@email", email);
@@ -47,11 +44,11 @@ namespace FlowTask_Backend
             bool usernameTaken = false;
             bool emailTaken = false;
 
-            foreach(DataRow x in dt.Rows)
+            while(sdr.Read())
             {
-                if (((string)x[0]).Equals(username))
+                if (sdr.GetString(0).Equals(username))
                     usernameTaken = true;
-                if (((string)x[1]).Equals(email))
+                if (sdr.GetString(1).Equals(email))
                     emailTaken = true;
             }
 
@@ -97,7 +94,6 @@ namespace FlowTask_Backend
         {
             const string sqlQuery = @"SELECT * FROM UserTable WHERE Username = @user AND HashedPassword = @hash";
 
-            DataTable dt = new DataTable();
             int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -109,8 +105,9 @@ namespace FlowTask_Backend
 
             if (rows_returned == 1)
             {
-                DataRow dr = dt.Rows[0];
-                User user = new User((int)dr[0], (string)dr[1], (string)dr[2], (string)dr[3], (string)dr[4], (string)dr[5]);
+                sdr.Read();
+
+                User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
 
                 return user;
             }
@@ -122,7 +119,6 @@ namespace FlowTask_Backend
         {
             const string sqlQuery = @"SELECT * FROM UserTable WHERE UserID = @id";
 
-            DataTable dt = new DataTable();
             int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -133,8 +129,8 @@ namespace FlowTask_Backend
 
             if (rows_returned == 1)
             {
-                DataRow dr = dt.Rows[0];
-                User user = new User((int)dr[0], (string)dr[1], (string)dr[2], (string)dr[3] , (string)dr[4], (string)dr[5]);
+                sdr.Read();
+                User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
 
                 return user;
             }
@@ -146,8 +142,6 @@ namespace FlowTask_Backend
         public List<Node> GetNodes(int GraphID)
         {
             const string sqlQuery = @"SELECT * FROM Node WHERE GraphID = @id";
-
-            DataTable dt = new DataTable();
             int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -160,13 +154,12 @@ namespace FlowTask_Backend
             {
                 List<Node> nodes = new List<Node>(rows_returned);
 
-                for(int i = 0; i < dt.Rows.Count; i++)
+               while(sdr.Read())
                 {
-                    DataRow dr = dt.Rows[i];
 
                     //int nodeID, string name, int timeWeight, bool complete, DateTime date, string text, int graphid
 
-                    nodes.Add(new Node((int)dr[0], (string)dr[1], (int)dr[2], (bool)dr[3], (DateTime)dr[4], (string)dr[5], (int)dr[6], (int)dr[7]));
+                    nodes.Add(new Node(sdr.GetInt32(0), sdr.GetString(1), sdr.GetInt32(2), sdr.GetInt32(3) == 1, DateTime.Parse(sdr.GetString(4)), sdr.GetString(5), sdr.GetInt32(6), sdr.GetInt32(7)));
                 }
 
                 Comparison<Node> comp = new Comparison<Node>((x,y) => x.NodeIndex == y.NodeIndex ? 0 : x.NodeIndex < y.NodeIndex ? -1 : 1);
@@ -231,7 +224,6 @@ namespace FlowTask_Backend
 
             const string sqlQuery = @"SELECT * FROM Graph WHERE GraphID = @id";
 
-            DataTable dt = new DataTable();
             int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -243,8 +235,9 @@ namespace FlowTask_Backend
             if (rows_returned != 0)
                 return null;
 
-            DataRow dr = dt.Rows[0];
-            var graph = new Graph((int)dr[0], nodes, (string)dr[2]);
+            sdr.Read();
+
+            var graph = new Graph(sdr.GetInt32(0), nodes, sdr.GetString(1));
 
             return graph;
         }
