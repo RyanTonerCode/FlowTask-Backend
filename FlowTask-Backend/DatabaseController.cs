@@ -14,6 +14,95 @@ namespace FlowTask_Backend
 
         private static readonly RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider();
 
+        private class Encrypter{
+
+            private static readonly byte[] Key = { 203, 181, 150, 14, 78, 58, 151, 106, 149, 77, 124, 227, 219, 155, 123, 40, 30, 99, 213, 33, 67, 96, 50, 206, 177, 137, 171, 119, 166, 94, 75, 230 };
+            private static readonly byte[] IV = { 159, 66, 13, 210, 131, 209, 219, 111, 108, 87, 128, 240, 84, 68, 62, 219 };
+
+            public static byte[] EncryptStringToBytes_Aes(string plainText)
+            {
+                // Check arguments.
+                if (plainText == null || plainText.Length <= 0)
+                    throw new ArgumentNullException("plainText");
+                if (Key == null || Key.Length <= 0)
+                    throw new ArgumentNullException("Key");
+                if (IV == null || IV.Length <= 0)
+                    throw new ArgumentNullException("IV");
+                byte[] encrypted;
+
+                // Create an Aes object
+                // with the specified key and IV.
+                using (Aes aesAlg = Aes.Create())
+                {
+                    aesAlg.Key = Key;
+                    aesAlg.IV = IV;
+
+                    // Create an encryptor to perform the stream transform.
+                    ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                    // Create the streams used for encryption.
+                    using (MemoryStream msEncrypt = new MemoryStream())
+                    {
+                        using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                        {
+                            using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                            {
+                                //Write all data to the stream.
+                                swEncrypt.Write(plainText);
+                            }
+                            encrypted = msEncrypt.ToArray();
+                        }
+                    }
+                }
+
+                // Return the encrypted bytes from the memory stream.
+                return encrypted;
+            }
+
+            public static string DecryptStringFromBytes_Aes(byte[] cipherText)
+            {
+                // Check arguments.
+                if (cipherText == null || cipherText.Length <= 0)
+                    throw new ArgumentNullException("cipherText");
+                if (Key == null || Key.Length <= 0)
+                    throw new ArgumentNullException("Key");
+                if (IV == null || IV.Length <= 0)
+                    throw new ArgumentNullException("IV");
+
+                // Declare the string used to hold
+                // the decrypted text.
+                string plaintext = null;
+
+                // Create an Aes object
+                // with the specified key and IV.
+                using (Aes aesAlg = Aes.Create())
+                {
+                    aesAlg.Key = Key;
+                    aesAlg.IV = IV;
+
+                    // Create a decryptor to perform the stream transform.
+                    ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                    // Create the streams used for decryption.
+                    using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+                    {
+                        using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                        {
+                            using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                            {
+
+                                // Read the decrypted bytes from the decrypting stream
+                                // and place them in a string.
+                                plaintext = srDecrypt.ReadToEnd();
+                            }
+                        }
+                    }
+                }
+
+                return plaintext;
+            }
+        }
+
         /// <summary>
         /// singleton database controller
         /// </summary>
@@ -74,11 +163,13 @@ namespace FlowTask_Backend
             if (availability.AccountExists == false)
                 return availability;
 
+            //hash the user's password here
+
             string query = "INSERT INTO UserTable (HashedPassword, Username, FirstName, LastName, Email)";
             query += " VALUES (@HashedPassword, @Username, @FirstName, @LastName, @Email)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, connection);
-            myCommand.Parameters.AddWithValue("@HashedPassword", user.HashedPassword);
+            myCommand.Parameters.AddWithValue("@HashedPassword", Encrypter.EncryptStringToBytes_Aes(user.HashedPassword));
             myCommand.Parameters.AddWithValue("@Username", user.Username);
             myCommand.Parameters.AddWithValue("@FirstName", user.FirstName);
             myCommand.Parameters.AddWithValue("@LastName", user.LastName);
@@ -111,7 +202,7 @@ namespace FlowTask_Backend
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
             cmd.Parameters.AddWithValue("@user", username);
-            cmd.Parameters.AddWithValue("@hash", hashedpassword);
+            cmd.Parameters.AddWithValue("@hash", Encrypter.EncryptStringToBytes_Aes(hashedpassword));
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
 
@@ -120,7 +211,7 @@ namespace FlowTask_Backend
 
             sdr.Read();
 
-            User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), "");
+            User user = new User(sdr.GetInt32(0), "", sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
 
             AuthorizationCookie ac = getAuthCookie();
 
@@ -232,10 +323,12 @@ namespace FlowTask_Backend
             return graph;
         }
 
-        public (bool Result, string FailureString) WriteTask(Task task, AuthorizationCookie ac)
+        private bool CheckValidAuthCookie(int userID, AuthorizationCookie ac) => logins.ContainsKey(userID) && logins[userID].BitString.Equals(ac.BitString);
+
+        public (bool Result, string FailureString, int TaskID) WriteTask(Task task, AuthorizationCookie ac)
         {
-            if (!logins.ContainsKey(task.UserID) || logins[task.UserID].BitString != ac.BitString)
-                return (false, "Invalid login!");
+            if(!CheckValidAuthCookie(task.UserID,ac))
+                return (false, "Invalid login!", -1);
 
 
             string query = "INSERT INTO Task (AssignmentName, GraphID, SubmissionDate, Category, UserID)";
@@ -251,12 +344,31 @@ namespace FlowTask_Backend
             // ... other parameters
             int rowsAffected = myCommand.ExecuteNonQuery();
 
+            if (rowsAffected == 0)
+                return (false, "Failed", -1);
+
             myCommand.Dispose();
 
-            if (rowsAffected == 0)
-                return (false, "Failed");
+            var id = getID("Task");
 
-            return (true, "Success");
+            return (true, "Success", id);
+        }
+
+        private int getID(string tablename)
+        {
+            var query = "Select seq from sqlite_sequence where name=@Name";
+            var myCommand = new SQLiteCommand(query, connection);
+            myCommand.Parameters.AddWithValue("@Name", tablename);
+
+            SQLiteDataReader sdr = myCommand.ExecuteReader();
+            if (sdr.HasRows)
+            {
+                sdr.Read();
+
+                return sdr.GetInt32(0);
+            }
+            else
+                return -1;
         }
 
 
@@ -274,7 +386,7 @@ namespace FlowTask_Backend
 
             while (sdr.HasRows && sdr.Read())
             {
-                Task t = new Task(sdr.GetInt32(0), sdr.GetString(1), sdr.GetInt32(2), sdr.GetString(3), sdr.GetString(4), sdr.GetInt32(5));
+                Task t = new Task(sdr.GetInt32(0), sdr.GetString(1), sdr.GetInt32(2), sdr.GetDateTime(3), sdr.GetString(4), sdr.GetInt32(5));
 
                 Graph g = getGraph(t.GraphID);
 
@@ -286,6 +398,26 @@ namespace FlowTask_Backend
             return tasks;
 
 
+        }
+
+        public (bool Success, string ErrorMessage) DeleteTask(Task t, AuthorizationCookie ac)
+        {
+            if (!CheckValidAuthCookie(t.UserID, ac))
+                return (false, "Invalid login!");
+
+            const string sqlQuery = @"DELETE FROM Task WHERE TaskID = @id";
+
+            SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
+            cmd.Parameters.AddWithValue("@id", t.TaskID);
+
+            SQLiteDataReader sdr = cmd.ExecuteReader();
+
+            if (sdr.RecordsAffected == 1)
+                return (true, "Successfully deleted your task!");
+
+            //TODO delete graph, nodes
+
+            return (false, "Failed to delete the task");
         }
 
 
