@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30002.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowTask-Backend", "FlowTask-Backend\FlowTask-Backend.csproj", "{70063882-DE25-4DD9-9F72-0B01651DCB8E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowTask-Backend", "flowtask-backend2\FlowTask-Backend.csproj", "{70063882-DE25-4DD9-9F72-0B01651DCB8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

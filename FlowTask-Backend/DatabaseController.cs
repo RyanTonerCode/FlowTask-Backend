@@ -1,13 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.SQLite;
+using System.IO;
+using System.Security.Cryptography;
 
 namespace FlowTask_Backend
 {
-    class DatabaseController
+    public class DatabaseController
     {
         private static DatabaseController singleton;
+
+        private static readonly Dictionary<int, AuthorizationCookie> logins = new Dictionary<int, AuthorizationCookie>();
+
+        private static readonly RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider();
 
         /// <summary>
         /// singleton database controller
@@ -27,11 +32,12 @@ namespace FlowTask_Backend
 
         private void Connect()
         {
-            connection = new SQLiteConnection("Data Source=C:/Users/Ryan/Desktop/flowtaskdb.db");
+            string dbpath = @"C:\Users\Ryan\Source\Repos\FlowTask-Backend\FlowTask-Backend\flowtaskdb.db";
+            connection = new SQLiteConnection("Data Source=" + dbpath);
             connection.Open();
         }
 
-        public (bool, string) AccountExists(string username, string email)
+        private (bool AccountExists, string ErrorCode) accountExists(string username, string email)
         {
             const string sqlQuery = @"SELECT Username, Email FROM UserTable WHERE Username = @username OR Email = @email";
 
@@ -53,19 +59,19 @@ namespace FlowTask_Backend
             }
 
             if (usernameTaken && emailTaken)
-                return (false, "Try another email and username");
+                return (false, "Sorry, please use another email and username.");
             if (usernameTaken)
-                return (false, "Try another username");
+                return (false, "Please try another username.");
             if (emailTaken)
-                return (false, "Try another email");
+                return (false, "Please try another email.");
 
-            return (true, "done");
+            return (true, "Successfully created your account.");
         }
 
         public (bool, string) WriteUser(User user)
         {
-            var availability = AccountExists(user.Username, user.Email);
-            if (availability.Item1 == false)
+            var availability = accountExists(user.Username, user.Email);
+            if (availability.AccountExists == false)
                 return availability;
 
             string query = "INSERT INTO UserTable (HashedPassword, Username, FirstName, LastName, Email)";
@@ -89,57 +95,44 @@ namespace FlowTask_Backend
             return (true, "Success");
         }
 
+        private AuthorizationCookie getAuthCookie()
+        {
+            byte[] randomAuth = new byte[256];
 
-        public User GetUser(string username, string hashedpassword)
+            rngCsp.GetBytes(randomAuth, 0, randomAuth.Length);
+
+            return new AuthorizationCookie(randomAuth);
+        }
+
+
+    public (User user, AuthorizationCookie ac) GetUser(string username, string hashedpassword)
         {
             const string sqlQuery = @"SELECT * FROM UserTable WHERE Username = @user AND HashedPassword = @hash";
-
-            int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
             cmd.Parameters.AddWithValue("@user", username);
             cmd.Parameters.AddWithValue("@hash", hashedpassword);
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
-            rows_returned = sdr.RecordsAffected;
 
-            if (rows_returned == 1)
-            {
-                sdr.Read();
+            if (!sdr.HasRows)
+                return (null, new AuthorizationCookie());
 
-                User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
+            sdr.Read();
 
-                return user;
-            }
+            User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), "");
 
-            return null;
+            AuthorizationCookie ac = getAuthCookie();
+
+            logins.Add(user.UserId, ac);
+
+            getTasks(user);
+
+            return (user, ac);
+
         }
 
-        private User GetUser(int ID)
-        {
-            const string sqlQuery = @"SELECT * FROM UserTable WHERE UserID = @id";
-
-            int rows_returned;
-
-            SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
-            cmd.Parameters.AddWithValue("@id", ID);
-
-            SQLiteDataReader sdr = cmd.ExecuteReader();
-            rows_returned = sdr.RecordsAffected;
-
-            if (rows_returned == 1)
-            {
-                sdr.Read();
-                User user = new User(sdr.GetInt32(0), sdr.GetString(1), sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
-
-                return user;
-            }
-
-            return null;
-        }
-
-
-        public List<Node> GetNodes(int GraphID)
+        private List<Node> getNodes(int GraphID)
         {
             const string sqlQuery = @"SELECT * FROM Node WHERE GraphID = @id";
             int rows_returned;
@@ -174,7 +167,7 @@ namespace FlowTask_Backend
 
         }
 
-        public (bool, string) WriteNode(Node node)
+        private (bool, string) writeNode(Node node)
         {
             string query = "INSERT INTO Node (Name, TimeWeight, Complete, Dated, Text, GraphID, NodeIndex)";
             query += " VALUES (@Name, @TimeWeight, @Complete, @Dated, @Text, @GraphID, @NodeIndex)";
@@ -198,7 +191,7 @@ namespace FlowTask_Backend
             return (true, "Success");
         }
 
-        public (bool, string) WriteGraph(Graph g)
+        private (bool, string) writeGraph(Graph g)
         {
             string query = "INSERT INTO Graph (GraphID, AdjacencyMatrix)";
             query += " VALUES (@GraphID, @AdjacencyMatrix)";
@@ -218,21 +211,18 @@ namespace FlowTask_Backend
         }
 
 
-        public Graph GetGraph(int GraphID)
+        private Graph getGraph(int GraphID)
         {
-            var nodes = GetNodes(GraphID);
+            var nodes = getNodes(GraphID);
 
             const string sqlQuery = @"SELECT * FROM Graph WHERE GraphID = @id";
-
-            int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
             cmd.Parameters.AddWithValue("@id", GraphID);
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
-            rows_returned = sdr.RecordsAffected;
 
-            if (rows_returned != 0)
+            if (!sdr.HasRows)
                 return null;
 
             sdr.Read();
@@ -240,6 +230,62 @@ namespace FlowTask_Backend
             var graph = new Graph(sdr.GetInt32(0), nodes, sdr.GetString(1));
 
             return graph;
+        }
+
+        public (bool Result, string FailureString) WriteTask(Task task, AuthorizationCookie ac)
+        {
+            if (!logins.ContainsKey(task.UserID) || logins[task.UserID].BitString != ac.BitString)
+                return (false, "Invalid login!");
+
+
+            string query = "INSERT INTO Task (AssignmentName, GraphID, SubmissionDate, Category, UserID)";
+            query += " VALUES (@AssignmentName, @GraphID, @SubmissionDate, @Category, @UserID)";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, connection);
+            myCommand.Parameters.AddWithValue("@AssignmentName", task.AssignmentName);
+            myCommand.Parameters.AddWithValue("@GraphID", task.GraphID);
+            myCommand.Parameters.AddWithValue("@SubmissionDate", task.SubmissionDate);
+            myCommand.Parameters.AddWithValue("@Category", task.Category);
+            myCommand.Parameters.AddWithValue("@UserID", task.UserID);
+
+            // ... other parameters
+            int rowsAffected = myCommand.ExecuteNonQuery();
+
+            myCommand.Dispose();
+
+            if (rowsAffected == 0)
+                return (false, "Failed");
+
+            return (true, "Success");
+        }
+
+
+        private List<Task> getTasks(User user)
+        {
+
+            const string sqlQuery = @"SELECT * FROM Task WHERE UserID = @id";
+
+            SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
+            cmd.Parameters.AddWithValue("@id", user.UserId);
+
+            SQLiteDataReader sdr = cmd.ExecuteReader();
+
+            List<Task> tasks = user.Tasks;
+
+            while (sdr.HasRows && sdr.Read())
+            {
+                Task t = new Task(sdr.GetInt32(0), sdr.GetString(1), sdr.GetInt32(2), sdr.GetString(3), sdr.GetString(4), sdr.GetInt32(5));
+
+                Graph g = getGraph(t.GraphID);
+
+                t.AddGraph(g);
+
+                tasks.Add(t);
+            }
+
+            return tasks;
+
+
         }
 
 

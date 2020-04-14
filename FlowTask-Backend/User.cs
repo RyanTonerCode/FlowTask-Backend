@@ -23,7 +23,7 @@ namespace FlowTask_Backend
         public string FirstName { get; private set; }
         public string LastName { get; private set; }
         public string Email { get; private set; }
-        internal Task[] Task { get; private set; }
+        public List<Task> Tasks { get; private set; }
 
         public User(string username, string firstName, string lastName, string email, string hashedPassword)
         {
@@ -33,9 +33,10 @@ namespace FlowTask_Backend
             FirstName = firstName;
             LastName = lastName;
             Email = email;
+            Tasks = new List<Task>();
         }
 
-        public User(int userID, string username, string firstName, string lastName, string email, string hashedPassword)
+        public User(int userID, string hashedPassword, string username, string firstName, string lastName, string email)
         {
             UserId = userID;
             HashedPassword = hashedPassword;
@@ -43,6 +44,7 @@ namespace FlowTask_Backend
             FirstName = firstName;
             LastName = lastName;
             Email = email;
+            Tasks = new List<Task>();
         }
     }
 }

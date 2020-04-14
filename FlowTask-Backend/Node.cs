@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FlowTask_Backend
 {
-    class Node
+    public class Node
     {
         public int NodeID { get; private set; }
         public string Name { get; private set; }

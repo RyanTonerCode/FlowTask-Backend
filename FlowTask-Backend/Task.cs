@@ -6,33 +6,29 @@ using System.Threading.Tasks;
 
 namespace FlowTask_Backend
 {
-    class Task
+    public class Task
     {
         public int TaskID { get; set; }
         public string AssignmentName { get; set; }
-        public int DecompID { get; set; }
-        public DateTime SubmissionDate { get; set; }
+        public string SubmissionDate { get; set; }
         public string Category { get; set; }
-        public int[] UserIDs { get; set; }
+        public int UserID { get; private set; }
+        public int GraphID { get; set; }
 
-        public Task(int taskID, string assignmentName, int decompID, DateTime submissionDate, string category, int[] userIDs)
+        public Graph Decomposition { get; private set; }
+
+        public Task(int taskID, string assignmentName, int graphID, string submissionDate, string category, int userID)
         {
-
+            TaskID = taskID;
+            AssignmentName = assignmentName;
+            SubmissionDate = submissionDate;
+            Category = category;
+            UserID = userID;
         }
 
-        static Task CreateTask(int[] userIDs, String name)
+        public void AddGraph(Graph g)
         {
-            return null;
-        }
-
-        static void ShareTask(int taskID, int[] userIDs)
-        {
-            return;
-        }
-
-        string CategorizeText(Task task, string text)
-        {
-            return "";
+            Decomposition = g;
         }
 
     }

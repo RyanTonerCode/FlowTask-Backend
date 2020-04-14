@@ -15,6 +15,7 @@ namespace FlowTask_Backend
             var User = db.GetUser("ryanat", "test");
 
             var res = db.WriteUser(ryan);
+            Console.WriteLine(res);
 
             Console.ReadLine();
         }

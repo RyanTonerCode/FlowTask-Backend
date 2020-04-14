@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FlowTask_Backend
 {
-    class Graph
+    public class Graph
     {
         public int GraphID { get; private set; }
         public List<Node> Nodes { get; private set; }
@@ -24,10 +24,10 @@ namespace FlowTask_Backend
             Adjacencies = new List<(int, int)>();
 
             Nodes = nodes;
-            var tuples = DBAdjacency.Split(";");
+            var tuples = DBAdjacency.Split(';');
             foreach (var s in tuples)
             {
-                var coords = s.Split(",");
+                var coords = s.Split(',');
 
                 int id1 = int.Parse(coords[0]);
                 int id2 = int.Parse(coords[1]);
