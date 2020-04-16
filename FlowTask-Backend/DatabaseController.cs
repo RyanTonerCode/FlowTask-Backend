@@ -131,7 +131,7 @@ namespace FlowTask_Backend
             const string sqlQuery = @"SELECT Username, Email FROM UserTable WHERE Username = @username OR Email = @email";
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
-            cmd.Parameters.AddWithValue("@username", username);
+            cmd.Parameters.AddWithValue("@username", username.ToLowerInvariant().Trim());
             cmd.Parameters.AddWithValue("@email", email);
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
@@ -198,6 +198,8 @@ namespace FlowTask_Backend
 
     public (User user, AuthorizationCookie ac) GetUser(string username, string hashedpassword)
         {
+            username = username.ToLowerInvariant().Trim();
+
             const string sqlQuery = @"SELECT * FROM UserTable WHERE Username = @user AND HashedPassword = @hash";
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -226,25 +228,19 @@ namespace FlowTask_Backend
         private List<Node> getNodes(int GraphID)
         {
             const string sqlQuery = @"SELECT * FROM Node WHERE GraphID = @id";
-            int rows_returned;
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
             cmd.Parameters.AddWithValue("@id", GraphID);
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
-            rows_returned = sdr.RecordsAffected;
 
-            if (rows_returned > 0)
+            if (sdr.HasRows)
             {
-                List<Node> nodes = new List<Node>(rows_returned);
+                List<Node> nodes = new List<Node>(20);
 
                while(sdr.Read())
-                {
-
-                    //int nodeID, string name, int timeWeight, bool complete, DateTime date, string text, int graphid
-
                     nodes.Add(new Node(sdr.GetInt32(0), sdr.GetString(1), sdr.GetInt32(2), sdr.GetInt32(3) == 1, DateTime.Parse(sdr.GetString(4)), sdr.GetString(5), sdr.GetInt32(6), sdr.GetInt32(7)));
-                }
+
 
                 Comparison<Node> comp = new Comparison<Node>((x,y) => x.NodeIndex == y.NodeIndex ? 0 : x.NodeIndex < y.NodeIndex ? -1 : 1);
 
@@ -258,16 +254,16 @@ namespace FlowTask_Backend
 
         }
 
-        private (bool, string) writeNode(Node node)
+        private (bool succeeded, string result, int NodeID) writeNode(Node node)
         {
-            string query = "INSERT INTO Node (Name, TimeWeight, Complete, Dated, Text, GraphID, NodeIndex)";
-            query += " VALUES (@Name, @TimeWeight, @Complete, @Dated, @Text, @GraphID, @NodeIndex)";
+            string query = "INSERT INTO Node (Name, TimeWeight, Complete, Date, Text, GraphID, NodeIndex)";
+            query += " VALUES (@Name, @TimeWeight, @Complete, @Date, @Text, @GraphID, @NodeIndex)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, connection);
             myCommand.Parameters.AddWithValue("@Name", node.Name);
             myCommand.Parameters.AddWithValue("@TimeWeight", node.TimeWeight);
             myCommand.Parameters.AddWithValue("@Complete", node.Complete);
-            myCommand.Parameters.AddWithValue("@Dated", node.Date);
+            myCommand.Parameters.AddWithValue("@Date", node.Date);
             myCommand.Parameters.AddWithValue("@Text", node.Text);
             myCommand.Parameters.AddWithValue("@GraphID", node.GraphID);
             myCommand.Parameters.AddWithValue("@NodeIndex", node.NodeIndex);
@@ -276,19 +272,20 @@ namespace FlowTask_Backend
 
             myCommand.Dispose();
 
-            if (rowsAffected == 0)
-                return (false, "Failed");
+            int nodeID = getID("Node");
 
-            return (true, "Success");
+            if (rowsAffected == 0)
+                return (false, "Failed", nodeID);
+
+            return (true, "Success", nodeID);
         }
 
         private (bool, string) writeGraph(Graph g)
         {
-            string query = "INSERT INTO Graph (GraphID, AdjacencyMatrix)";
-            query += " VALUES (@GraphID, @AdjacencyMatrix)";
+            string query = "INSERT INTO Graph (AdjacencyMatrix)";
+            query += " VALUES (@AdjacencyMatrix)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, connection);
-            myCommand.Parameters.AddWithValue("@GraphID", g.GraphID);
             myCommand.Parameters.AddWithValue("@AdjacencyMatrix", g.GetDBFormatAdjacency());
 
             int rowsAffected = myCommand.ExecuteNonQuery();
@@ -325,18 +322,80 @@ namespace FlowTask_Backend
 
         private bool CheckValidAuthCookie(int userID, AuthorizationCookie ac) => logins.ContainsKey(userID) && logins[userID].BitString.Equals(ac.BitString);
 
-        public (bool Result, string FailureString, int TaskID) WriteTask(Task task, AuthorizationCookie ac)
+        public (bool Result, string FailureString, Task fullTask) WriteTask(Task task, AuthorizationCookie ac)
         {
             if(!CheckValidAuthCookie(task.UserID,ac))
-                return (false, "Invalid login!", -1);
+                return (false, "Invalid login!", null);
 
 
             string query = "INSERT INTO Task (AssignmentName, GraphID, SubmissionDate, Category, UserID)";
             query += " VALUES (@AssignmentName, @GraphID, @SubmissionDate, @Category, @UserID)";
 
+            //get graph id before anything
+            int graphID = getID("Graph") + 1;
+
+            //create a graph first...
+            Graph g = new Graph();
+
+            if (task.Category.Equals("Research Paper"))
+            {
+                Node header = new Node(task.Category, 0, false, task.SubmissionDate, "", graphID, 0);
+                Node n1 = new Node("Collect Sources", 0, false, task.SubmissionDate.AddDays(-11), "Research", graphID, 1);
+                Node n2 = new Node("Write Thesis", 0, false, task.SubmissionDate.AddDays(-10), "", graphID, 2);
+                Node n3 = new Node("Introduction", 0, false, task.SubmissionDate.AddDays(-9), "", graphID, 3);
+                Node n4 = new Node("Body Paragraph 1", 0, false, task.SubmissionDate.AddDays(-7), "", graphID, 4);
+                Node n5 = new Node("Body Paragraph 2", 0, false, task.SubmissionDate.AddDays(-5), "", graphID, 5);
+                Node n6 = new Node("Body Paragraph 3", 0, false, task.SubmissionDate.AddDays(-3), "", graphID, 6);
+                Node n7 = new Node("Conclusion", 0, false, task.SubmissionDate.AddDays(-2), "", graphID, 7);
+                Node n8 = new Node("Citations", 0, false, task.SubmissionDate.AddDays(-1), "", graphID, 8);
+
+                g.AddNodes(header, n1, n2, n3, n4, n5, n6, n7, n8);
+                g.CreateEdge(header, n1);
+                g.CreateEdge(header, n2);
+                g.CreateEdge(header, n3);
+                g.CreateEdge(header, n4);
+                g.CreateEdge(header, n5);
+                g.CreateEdge(header, n6);
+                g.CreateEdge(header, n7);
+                g.CreateEdge(header, n8);
+
+                var result_graph = writeGraph(g);
+                foreach(Node n in g.Nodes)
+                    writeNode(n);
+
+            }
+            else if(task.Category.Equals("Agile Software Project"))
+            {
+                Node header = new Node(task.Category, 0, false, task.SubmissionDate, "", graphID, 0);
+                Node n1 = new Node("Sprint 1", 0, false, task.SubmissionDate.AddDays(-13), "Deliverable", graphID, 1);
+                Node n1_1 = new Node("Create Wireframe", 0, false, task.SubmissionDate.AddDays(-13), "Lucidchart", graphID, 2);
+                Node n2 = new Node("Sprint 2", 0, false, task.SubmissionDate.AddDays(-7), "Deliverable", graphID, 3);
+                Node n2_1 = new Node("Create SQLite Database", 0, false, task.SubmissionDate.AddDays(-10), "", graphID, 4);
+                Node n2_2 = new Node("Write Web API", 0, false, task.SubmissionDate.AddDays(-9), "REST API", graphID, 5);
+                Node n2_3 = new Node("Code Review", 0, false, task.SubmissionDate.AddDays(-6), "Pair Programming", graphID, 6);
+                Node n3 = new Node("Sprint 3", 0, false, task.SubmissionDate, "Deliverable", graphID, 7);
+                Node n3_1 = new Node("Unit Test", 0, false, task.SubmissionDate.AddDays(-2), "Ryan and Kyle", graphID, 8);
+                Node n3_2 = new Node("Release Version 1", 0, false, task.SubmissionDate.AddDays(-1), "GitHub Release", graphID, 9);
+
+                g.AddNodes(header, n1, n1_1, n2, n2_1, n2_2, n2_3, n3, n3_1, n3_2);
+                g.CreateEdge(header, n1);
+                g.CreateEdge(header, n2);
+                g.CreateEdge(header, n3);
+                g.CreateEdge(n1, n1_1);
+                g.CreateEdge(n2, n2_1);
+                g.CreateEdge(n2, n2_2);
+                g.CreateEdge(n2, n2_3);
+                g.CreateEdge(n3, n3_1);
+                g.CreateEdge(n3, n3_2);
+
+                var result_graph = writeGraph(g);
+                foreach (Node n in g.Nodes)
+                    writeNode(n);
+            }
+
             SQLiteCommand myCommand = new SQLiteCommand(query, connection);
             myCommand.Parameters.AddWithValue("@AssignmentName", task.AssignmentName);
-            myCommand.Parameters.AddWithValue("@GraphID", task.GraphID);
+            myCommand.Parameters.AddWithValue("@GraphID", graphID);
             myCommand.Parameters.AddWithValue("@SubmissionDate", task.SubmissionDate);
             myCommand.Parameters.AddWithValue("@Category", task.Category);
             myCommand.Parameters.AddWithValue("@UserID", task.UserID);
@@ -345,13 +404,17 @@ namespace FlowTask_Backend
             int rowsAffected = myCommand.ExecuteNonQuery();
 
             if (rowsAffected == 0)
-                return (false, "Failed", -1);
+                return (false, "Failed", null);
 
             myCommand.Dispose();
 
             var id = getID("Task");
 
-            return (true, "Success", id);
+            Task return_task = new Task(id, task.AssignmentName, graphID, task.SubmissionDate, task.Category, task.UserID);
+
+            return_task.AddGraph(g);
+
+            return (true, "Success", return_task);
         }
 
         private int getID(string tablename)
@@ -405,6 +468,7 @@ namespace FlowTask_Backend
             if (!CheckValidAuthCookie(t.UserID, ac))
                 return (false, "Invalid login!");
 
+
             const string sqlQuery = @"DELETE FROM Task WHERE TaskID = @id";
 
             SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
@@ -412,12 +476,44 @@ namespace FlowTask_Backend
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
 
+            deleteGraph(t.GraphID);
+
             if (sdr.RecordsAffected == 1)
                 return (true, "Successfully deleted your task!");
 
-            //TODO delete graph, nodes
-
             return (false, "Failed to delete the task");
+        }
+
+        private (bool Success, string ErrorMessage) deleteGraph(int graphID)
+        {
+            deleteNodes(graphID);
+
+            const string sqlQuery = @"DELETE FROM Graph WHERE GraphID = @id";
+
+            SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
+            cmd.Parameters.AddWithValue("@id", graphID);
+
+            SQLiteDataReader sdr = cmd.ExecuteReader();
+
+            if (sdr.RecordsAffected == 1)
+                return (true, "Successfully deleted the graph.");
+
+            return (false, "Failed to delete the graph");
+        }
+
+        private (bool Success, string ErrorMessage) deleteNodes(int graphID)
+        {
+            const string sqlQuery = @"DELETE FROM Node WHERE GraphID = @id";
+
+            SQLiteCommand cmd = new SQLiteCommand(sqlQuery, connection);
+            cmd.Parameters.AddWithValue("@id", graphID);
+
+            SQLiteDataReader sdr = cmd.ExecuteReader();
+
+            if (sdr.RecordsAffected == 1)
+                return (true, "Successfully deleted nodes.");
+
+            return (false, "Failed to delete nodes");
         }
 
 

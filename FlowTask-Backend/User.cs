@@ -14,10 +14,10 @@ namespace FlowTask_Backend
         private string username;
         public string Username { 
             get {
-                return username.ToLowerInvariant();
+                return username.ToLowerInvariant().Trim();
             } 
             private set {
-                username = value.ToLowerInvariant(); 
+                username = value.ToLowerInvariant().Trim(); 
             } 
         }
         public string FirstName { get; private set; }
@@ -28,22 +28,22 @@ namespace FlowTask_Backend
         public User(string username, string firstName, string lastName, string email, string hashedPassword)
         {
             UserId = -1;
-            HashedPassword = hashedPassword;
-            Username = username;
-            FirstName = firstName;
-            LastName = lastName;
-            Email = email;
+            HashedPassword = hashedPassword.Trim();
+            Username = username.Trim();
+            FirstName = firstName.Trim();
+            LastName = lastName.Trim();
+            Email = email.Trim();
             Tasks = new List<Task>();
         }
 
         public User(int userID, string hashedPassword, string username, string firstName, string lastName, string email)
         {
             UserId = userID;
-            HashedPassword = hashedPassword;
-            Username = username;
-            FirstName = firstName;
-            LastName = lastName;
-            Email = email;
+            HashedPassword = hashedPassword.Trim();
+            Username = username.Trim();
+            FirstName = firstName.Trim();
+            LastName = lastName.Trim();
+            Email = email.Trim();
             Tasks = new List<Task>();
         }
     }

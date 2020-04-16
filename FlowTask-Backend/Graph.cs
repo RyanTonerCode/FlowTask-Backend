@@ -41,7 +41,7 @@ namespace FlowTask_Backend
             StringBuilder sb = new StringBuilder();
             foreach(var x in Adjacencies)
                 sb.Append(x.Item1).Append(",").Append(x.Item2).Append(";");
-            return sb.ToString().Substring(sb.Length - 1);
+            return sb.ToString().Substring(0,sb.Length - 1);
         }
 
         public void CreateEdge(Node a, Node b)
@@ -49,10 +49,29 @@ namespace FlowTask_Backend
             Adjacencies.Add((a.NodeIndex, b.NodeIndex));
         }
 
+        public List<Node> GetNeighbors(int NodeIndex)
+        {
+            //cool functional code to do this
+            var neighbors = Adjacencies.Where(x => x.Item1 == NodeIndex).Select(x => Nodes[x.Item2]).ToList();
+            Comparison<Node> comp = new Comparison<Node>((x, y) => x.NodeIndex == y.NodeIndex ? 0 : x.NodeIndex < y.NodeIndex ? -1 : 1);
+            neighbors.Sort(comp);
+            return neighbors;
+        }
+
         public void AddNode(Node n)
         {
             n.NodeIndex = Nodes.Count;
             Nodes.Add(n);
+        }
+
+        public void AddNodes(params Node[] nodes)
+        {
+            Nodes.AddRange(nodes);
+        }
+
+        public DateTime GetSoonestDate()
+        {
+            return Nodes.Min(x => x.Date);
         }
     }
 }

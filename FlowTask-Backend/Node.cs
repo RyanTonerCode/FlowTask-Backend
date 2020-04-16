@@ -17,9 +17,27 @@ namespace FlowTask_Backend
         public DateTime Date { get; private set; }
         public int NodeIndex { get; internal set; }
 
-        public Node(int nodeID, string name, int timeWeight, bool complete, DateTime date, string text, int graphid, int NodeIndex)
+        public Node(int nodeID, string name, int timeWeight, bool complete, DateTime date, string text, int graphid, int nodeIndex)
         {
-            
+            NodeID = nodeID;
+            Name = name.Trim();
+            TimeWeight = timeWeight;
+            Complete = complete;
+            Text = text.Trim();
+            GraphID = graphid;
+            Date = date;
+            NodeIndex = nodeIndex;
+        }
+
+        public Node(string name, int timeWeight, bool complete, DateTime date, string text, int graphid, int nodeIndex)
+        {
+            Name = name.Trim();
+            TimeWeight = timeWeight;
+            Complete = complete;
+            Text = text.Trim();
+            GraphID = graphid;
+            Date = date;
+            NodeIndex = nodeIndex;
         }
 
 
