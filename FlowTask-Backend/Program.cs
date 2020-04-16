@@ -2,17 +2,20 @@
 
 namespace FlowTask_Backend
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        /// <summary>
+        /// If you change the output type to Console Application in the .csproj, you can run some quick unit tests of the DB.
+        /// Otherwise, this is not used.
+        /// </summary>
+        /// <param name="args"></param>
+        internal static void Main(string[] args)
         {
             var db = DatabaseController.dbController;
 
+            User ryan = new User(0, "ryanat", "Ryan", "Toner", "ryan.toner@student.fairfield.edu", "test");
 
-            User ryan = new User("ryanat", "Ryan", "Toner", "ryan.toner@student.fairfield.edu", "test");
-
-
-            var User = db.GetUser("ryanat", "test");
+            var (user, ac) = db.GetUser("ryanat", "test");
 
             var res = db.WriteUser(ryan);
             Console.WriteLine(res);
