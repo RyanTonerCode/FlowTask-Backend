@@ -3,7 +3,7 @@ namespace FlowTask_Backend
 {
 
     /// <summary>
-    /// This struct encapsulats an authorization cookie that ensures the user has logged in to the system.
+    /// This struct encapsulates an authorization cookie that ensures the user has logged in to the system.
     /// </summary>
     public struct AuthorizationCookie
     {

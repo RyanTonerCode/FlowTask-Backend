@@ -19,7 +19,7 @@ namespace FlowTask_Backend
         public string AssignmentName { get; set; }
 
         /// <summary>
-        /// Fina submission deadline
+        /// Final submission deadline
         /// </summary>
         public DateTime SubmissionDate { get; set; }
 
@@ -95,7 +95,8 @@ namespace FlowTask_Backend
             {
                 if (Decomposition == null || Decomposition.Nodes == null || Decomposition.Nodes.Count == 0)
                     return 0;
-                return Decomposition.Nodes.Where(x => !x.Complete).Count() - 1;
+                //filter out the first node.
+                return Decomposition.Nodes.Where(x => x.NodeIndex != 0).Where(x => !x.Complete).Count();
             }
         }
 

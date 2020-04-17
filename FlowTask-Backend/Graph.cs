@@ -137,5 +137,15 @@ namespace FlowTask_Backend
             //otherwise actually return the min
             return incomplete.Min(x => x.Date);
         }
+
+        /// <summary>
+        /// Returns the soonest node
+        /// </summary>
+        /// <returns></returns>
+        public Node GetSoonestNode()
+        {
+            DateTime soon = GetSoonestDate();
+            return Nodes.Where(x => !x.Complete).Where(x => x.Date == soon).FirstOrDefault();
+        }
     }
 }

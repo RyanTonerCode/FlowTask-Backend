@@ -14,7 +14,7 @@ namespace FlowTask_Backend
         /// <summary>
         /// Uses singleton design pattern
         /// </summary>
-        private static DatabaseController singleton;
+        private static DatabaseController dbSingleton;
 
         /// <summary>
         /// Stores a mapping of active logins of UUID -> AuthCookie
@@ -140,12 +140,9 @@ namespace FlowTask_Backend
         /// <summary>
         /// Singleton database controller
         /// </summary>
-        public static DatabaseController dbController
+        public static DatabaseController GetDBController(bool IsLocal = false)
         {
-            get
-            {
-                return singleton ?? (singleton = new DatabaseController());
-            }
+            return dbSingleton ?? (dbSingleton = new DatabaseController(IsLocal));
         }
 
         /// <summary>
@@ -156,12 +153,16 @@ namespace FlowTask_Backend
         /// <summary>
         /// Connect upon construction.
         /// </summary>
-        public DatabaseController() => Connect();
+        public DatabaseController(bool IsLocal) => Connect(IsLocal);
 
-        private void Connect()
+        private void Connect(bool IsLocal)
         {
             //SET THIS DB PATH TO WHERE IT NEEDS TO BE
-            string dbpath = @"C:\Users\Ryan\Source\Repos\FlowTask-Backend\FlowTask-Backend\flowtaskdb.db";
+            string dbpath;
+            if(IsLocal)
+                dbpath = @"C:\Users\Ryan\Source\Repos\FlowTask-Backend\FlowTask-Backend\flowtaskdb.db";
+            else
+                dbpath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName + @"\flowtaskdb.db";
             connection = new SQLiteConnection("Data Source=" + dbpath);
             connection.Open();
         }
@@ -324,7 +325,7 @@ namespace FlowTask_Backend
         /// </summary>
         /// <param name="node"></param>
         /// <returns></returns>
-        private (bool Succeeded, string Result, int NodeID) writeNode(Node node)
+        private (bool Succeeded, string Result, Node UpdatedNode) writeNode(Node node)
         {
             const string query = @"INSERT INTO Node (Name, TimeWeight, Complete, Date, Text, GraphID, NodeIndex) 
             VALUES (@Name, @TimeWeight, @Complete, @Date, @Text, @GraphID, @NodeIndex)";
@@ -343,11 +344,13 @@ namespace FlowTask_Backend
             myCommand.Dispose();
 
             int nodeID = getID("Node");
-
             if (rowsUpdated == 0)
-                return (false, "Failed to write the node!", nodeID);
+                return (false, "Failed to write the node!", null);
 
-            return (true, "Success", nodeID);
+            //update the node id
+            Node updated = new Node(nodeID, node.Name, node.TimeWeight, node.Complete, node.Date, node.Text, node.GraphID, node.NodeIndex);
+
+            return (true, "Success", updated);
         }
 
         /// <summary>
@@ -453,11 +456,11 @@ namespace FlowTask_Backend
                 //vertex set
                 Node header = new Node(task.Category, 0, false, task.SubmissionDate, "", graphID, 0);
                 Node n1 = new Node("Sprint 1", 0, false, task.SubmissionDate.AddDays(-13), "Deliverable", graphID, 1);
-                Node n1_1 = new Node("Create Wireframe", 0, false, task.SubmissionDate.AddDays(-13), "Lucidchart", graphID, 2);
-                Node n2 = new Node("Sprint 2", 0, false, task.SubmissionDate.AddDays(-7), "Deliverable", graphID, 3);
-                Node n2_1 = new Node("Create SQLite Database", 0, false, task.SubmissionDate.AddDays(-10), "", graphID, 4);
+                Node n1_1 = new Node("Create Wireframe", 0, false, task.SubmissionDate.AddDays(-14), "Lucidchart", graphID, 2);
+                Node n2 = new Node("Sprint 2", 0, false, task.SubmissionDate.AddDays(-6), "Deliverable", graphID, 3);
+                Node n2_1 = new Node("Create SQLite Database", 0, false, task.SubmissionDate.AddDays(-11), "", graphID, 4);
                 Node n2_2 = new Node("Write Web API", 0, false, task.SubmissionDate.AddDays(-9), "REST API", graphID, 5);
-                Node n2_3 = new Node("Code Review", 0, false, task.SubmissionDate.AddDays(-6), "Pair Programming", graphID, 6);
+                Node n2_3 = new Node("Code Review", 0, false, task.SubmissionDate.AddDays(-7), "Pair Programming", graphID, 6);
                 Node n3 = new Node("Sprint 3", 0, false, task.SubmissionDate, "Deliverable", graphID, 7);
                 Node n3_1 = new Node("Unit Test", 0, false, task.SubmissionDate.AddDays(-2), "Ryan and Kyle", graphID, 8);
                 Node n3_2 = new Node("Release Version 1", 0, false, task.SubmissionDate.AddDays(-1), "GitHub Release", graphID, 9);
@@ -478,8 +481,14 @@ namespace FlowTask_Backend
             }
 
             //Write all the new nodes
-            foreach (Node new_node in new_graph.Nodes)
-                writeNode(new_node);
+            for (int i = 0; i < new_graph.Nodes.Count; i++)
+            {
+                Node n = new_graph.Nodes[i];
+                (bool Succeeded, _, Node UpdatedNode) = writeNode(n);
+                //make sure to pass the updated node with the correct ID information.
+                if(Succeeded && UpdatedNode != null)
+                    new_graph.Nodes[i] = UpdatedNode;
+            }
 
             SQLiteCommand myCommand = new SQLiteCommand(query, connection);
             myCommand.Parameters.AddWithValue("@AssignmentName", task.AssignmentName);
@@ -650,7 +659,7 @@ namespace FlowTask_Backend
             if (sdr.RecordsAffected == 1)
                 return (true, "Successfully updated value.");
 
-            return (false, "Failed to delete nodes");
+            return (false, "Failed to update nodes");
         }
 
 

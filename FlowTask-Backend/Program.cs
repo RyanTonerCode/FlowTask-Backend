@@ -11,7 +11,7 @@ namespace FlowTask_Backend
         /// <param name="args"></param>
         internal static void Main(string[] args)
         {
-            var db = DatabaseController.dbController;
+            var db = DatabaseController.GetDBController();
 
             User ryan = new User(0, "ryanat", "Ryan", "Toner", "ryan.toner@student.fairfield.edu", "test");
 
