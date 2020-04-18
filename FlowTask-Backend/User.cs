@@ -37,15 +37,15 @@ namespace FlowTask_Backend
         /// To be used by DB only.
         /// </summary>
         /// <param name="userID"></param>
-        /// <param name="hashedPassword"></param>
+        /// <param name="password"></param>
         /// <param name="username"></param>
         /// <param name="firstName"></param>
         /// <param name="lastName"></param>
         /// <param name="email"></param>
-        public User(int userID, string hashedPassword, string username, string firstName, string lastName, string email)
+        public User(int userID, string password, string username, string firstName, string lastName, string email)
         {
             UserID = userID;
-            Password = hashedPassword.Trim();
+            Password = password.Trim();
             Username = username.ToLowerInvariant().Trim();
             FirstName = firstName.Trim();
             LastName = lastName.Trim();
@@ -56,14 +56,14 @@ namespace FlowTask_Backend
         /// <summary>
         /// Create a user without a UserID.
         /// </summary>
-        /// <param name="hashedPassword"></param>
+        /// <param name="password"></param>
         /// <param name="username"></param>
         /// <param name="firstName"></param>
         /// <param name="lastName"></param>
         /// <param name="email"></param>
-        public User(string hashedPassword, string username, string firstName, string lastName, string email)
+        public User(string password, string username, string firstName, string lastName, string email)
         {
-            Password = hashedPassword.Trim();
+            Password = password.Trim();
             Username = username.ToLowerInvariant().Trim();
             FirstName = firstName.Trim();
             LastName = lastName.Trim();

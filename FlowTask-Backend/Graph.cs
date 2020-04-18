@@ -130,9 +130,13 @@ namespace FlowTask_Backend
             //return the min date from the incomplete nodes.
             var incomplete = Nodes.Where(x => !x.Complete);
 
-            //return now if there are none
+            //return the last node if there are none ncomplete
             if (incomplete.Count() == 0)
+            {
+                if(Nodes.Count > 0)
+                    return Nodes[0].Date;
                 return DateTime.Now;
+            }
 
             //otherwise actually return the min
             return incomplete.Min(x => x.Date);

@@ -27,7 +27,7 @@ namespace FlowTask_Backend
         /// <param name="UserID"></param>
         /// <param name="ac"></param>
         /// <returns></returns>
-        private bool CheckValidAuthCookie(int UserID, AuthorizationCookie ac) => activeLogins.ContainsKey(UserID) && activeLogins[UserID].GetBitString().Equals(ac.GetBitString());
+        private bool checkValidAuthCookie(int UserID, AuthorizationCookie ac) => activeLogins.ContainsKey(UserID) && activeLogins[UserID].GetBitString().Equals(ac.GetBitString());
 
         /// <summary>
         /// Generate random bytes securely
@@ -153,9 +153,9 @@ namespace FlowTask_Backend
         /// <summary>
         /// Connect upon construction.
         /// </summary>
-        public DatabaseController(bool IsLocal) => Connect(IsLocal);
+        public DatabaseController(bool IsLocal) => connect(IsLocal);
 
-        private void Connect(bool IsLocal)
+        private void connect(bool IsLocal)
         {
             //SET THIS DB PATH TO WHERE IT NEEDS TO BE
             string dbpath;
@@ -378,17 +378,17 @@ namespace FlowTask_Backend
         /// <summary>
         /// Retrieve a graph by the graph ID.
         /// </summary>
-        /// <param name="GraphID"></param>
+        /// <param name="graphID"></param>
         /// <returns></returns>
-        private Graph getGraph(int GraphID)
+        private Graph getGraph(int graphID)
         {
             //get the nodes first
-            var nodes = getNodes(GraphID);
+            var nodes = getNodes(graphID);
 
             const string query = @"SELECT * FROM Graph WHERE GraphID = @id";
 
             SQLiteCommand cmd = new SQLiteCommand(query, connection);
-            cmd.Parameters.AddWithValue("@id", GraphID);
+            cmd.Parameters.AddWithValue("@id", graphID);
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
 
@@ -411,7 +411,7 @@ namespace FlowTask_Backend
         /// <returns></returns>
         public (bool Succeeded, string FailureString, Task fullTask) WriteTask(Task task, AuthorizationCookie ac)
         {
-            if (!CheckValidAuthCookie(task.UserID, ac))
+            if (!checkValidAuthCookie(task.UserID, ac))
                 return (false, "Invalid login!", null);
 
 
@@ -574,7 +574,7 @@ namespace FlowTask_Backend
         /// <returns></returns>
         public (bool Succeeded, string ErrorMessage) DeleteTask(Task t, AuthorizationCookie ac)
         {
-            if (!CheckValidAuthCookie(t.UserID, ac))
+            if (!checkValidAuthCookie(t.UserID, ac))
                 return (false, "Invalid login!");
 
 
@@ -645,7 +645,7 @@ namespace FlowTask_Backend
         /// <returns></returns>
         public (bool Succeeded, string ErrorMessage) UpdateComplete(AuthorizationCookie ac, int userID, int nodeID, bool complete)
         {
-            if (!CheckValidAuthCookie(userID, ac))
+            if (!checkValidAuthCookie(userID, ac))
                 return (false, "Invalid login!");
 
             const string query = @"UPDATE NODE SET Complete = @complete WHERE NodeID = @id";

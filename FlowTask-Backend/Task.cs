@@ -96,7 +96,7 @@ namespace FlowTask_Backend
                 if (Decomposition == null || Decomposition.Nodes == null || Decomposition.Nodes.Count == 0)
                     return 0;
                 //filter out the first node.
-                return Decomposition.Nodes.Where(x => x.NodeIndex != 0).Where(x => !x.Complete).Count();
+                return Decomposition.Nodes.Where(x => !x.Complete).Count();
             }
         }
 
