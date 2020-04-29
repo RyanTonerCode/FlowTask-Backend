@@ -37,7 +37,7 @@ namespace FlowTask_Backend
         /// <summary>
         /// Hidden internal class. Clearly the Key and IV value should not be hardcoded, but since this isn't deployed, it doesn't matter.
         /// </summary>
-        private class Encrypter
+        public class Encrypter
         {
 
             private static readonly byte[] Key = { 203, 181, 150, 14, 78, 58, 151, 106, 149, 77, 124, 227, 219, 155, 123, 40, 30, 99, 213, 33, 67, 96, 50, 206, 177, 137, 171, 119, 166, 94, 75, 230 };
@@ -155,14 +155,20 @@ namespace FlowTask_Backend
         /// </summary>
         public DatabaseController(bool IsLocal) => connect(IsLocal);
 
+        public DatabaseController()
+        {
+        }
+
         private void connect(bool IsLocal)
         {
             //SET THIS DB PATH TO WHERE IT NEEDS TO BE
             string dbpath;
-            if(IsLocal)
-                dbpath = @"C:\Users\Ryan\Source\Repos\FlowTask-Backend\FlowTask-Backend\flowtaskdb.db";
+
+            if (IsLocal)
+                dbpath = Directory.GetCurrentDirectory() + @"\flowtaskdb.db";
             else
-                dbpath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName + @"\flowtaskdb.db";
+                dbpath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName + @"\flowtaskdb.db";
+
             connection = new SQLiteConnection("Data Source=" + dbpath);
             connection.Open();
         }
@@ -281,7 +287,8 @@ namespace FlowTask_Backend
             User user = new User(sdr.GetInt32(0), "", sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
             AuthorizationCookie ac = getAuthCookie();
 
-            activeLogins.Add(user.UserID, ac);
+            if(!activeLogins.ContainsKey(user.UserID))
+                activeLogins.Add(user.UserID, ac);
 
             //retrieve the tasks for the user
             getTasks(user);
@@ -529,7 +536,16 @@ namespace FlowTask_Backend
             {
                 sdr.Read();
 
-                return sdr.GetInt32(0);
+                int to_return = 0;
+                try
+                {
+                    to_return = sdr.GetInt32(0);
+                }
+                catch(Exception) { 
+                    to_return = 0; 
+                }
+                return to_return;
+                
             }
             else
                 return 0;
