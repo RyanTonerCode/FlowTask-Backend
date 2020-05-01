@@ -186,7 +186,7 @@ namespace FlowTask_Backend
 
             SQLiteCommand cmd = new SQLiteCommand(query, connection);
             cmd.Parameters.AddWithValue("@username", username.ToLowerInvariant().Trim());
-            cmd.Parameters.AddWithValue("@email", email);
+            cmd.Parameters.AddWithValue("@email", email.ToLowerInvariant().Trim());
 
             SQLiteDataReader sdr = cmd.ExecuteReader();
 
@@ -285,10 +285,15 @@ namespace FlowTask_Backend
             sdr.Read();
 
             User user = new User(sdr.GetInt32(0), "", sdr.GetString(2), sdr.GetString(3), sdr.GetString(4), sdr.GetString(5));
-            AuthorizationCookie ac = getAuthCookie();
+            AuthorizationCookie ac;
 
-            if(!activeLogins.ContainsKey(user.UserID))
+            if (!activeLogins.ContainsKey(user.UserID))
+            {
+                ac = getAuthCookie();
                 activeLogins.Add(user.UserID, ac);
+            }
+            else
+                ac = activeLogins[user.UserID];
 
             //retrieve the tasks for the user
             getTasks(user);

@@ -5,7 +5,7 @@ using System;
 namespace FlowTask_Test
 {
     [TestClass]
-    public class UnitTest
+    public class DatabaseDriver
     {
 
         private static readonly DatabaseController db = DatabaseController.GetDBController();
@@ -35,12 +35,12 @@ namespace FlowTask_Test
         }
 
         [TestMethod]
-        public void CreateUser()
+        public void TestCreateUser()
         {
-            string username = DateTime.Now.ToString();
+            string username = DateTime.Now.ToString().ToLowerInvariant();
+            string email = username;
             string firstName = "test_first";
-            string lastName = "test_second";
-            string email = "test_email";
+            string lastName = "test_last";
             string password = "test_password";
 
             User newUser = new User(password, username, firstName, lastName, email);
@@ -70,51 +70,54 @@ namespace FlowTask_Test
 
         [TestMethod]
         public void TestWriteTask()
-        {
-            
+        {        
             DateTime date = DateTime.Now.AddDays(14);
             Task newtask = new Task("Project", date, "Research Paper", 16);
-            var (user, ac) = db.GetUser("a", "a");
+
+            (User user, AuthorizationCookie? ac) = db.GetUser("a", "a");
             (bool succeeded, _, Task fullTask) = db.WriteTask(newtask, ac.Value);
             Assert.IsTrue(succeeded);
             Assert.AreEqual(newtask.AssignmentName, fullTask.AssignmentName);
             Assert.AreEqual(newtask.Category, fullTask.Category);
-            
+
+            TestUpdateComplete(fullTask, user, ac.Value); //update nodes in the task to complete
         }
-
-        [TestMethod]
-        public void TestUpdateComplete()
+    
+        public void TestUpdateComplete(Task newtask, User user, AuthorizationCookie ac)
         {
-            var (user, ac) = db.GetUser("a", "a");
-
-            Task myTask = user.Tasks[0];
-
-            var node1 = myTask.Decomposition.GetSoonestNode();
+            Node node1 = newtask.Decomposition.GetSoonestNode();
             node1.SetCompleteStatus(true);
 
-            (bool succeed, String _)  = db.UpdateComplete(ac.Value, user.UserID, node1.NodeID,true);
+            (bool succeed, _)  = db.UpdateComplete(ac, user.UserID, node1.NodeID,true);
 
             Assert.IsTrue(succeed);
 
-            var node2 = myTask.Decomposition.GetSoonestNode();
+            var node2 = newtask.Decomposition.GetSoonestNode();
             node2.SetCompleteStatus(true);
 
             Assert.IsTrue(node2.Date > node1.Date);
 
-            (bool succeed2, String _) = db.UpdateComplete(ac.Value, user.UserID, myTask.Decomposition.GetSoonestNode().NodeID, true);
+            (bool succeed2, _) = db.UpdateComplete(ac, user.UserID, newtask.Decomposition.GetSoonestNode().NodeID, true);
 
             Assert.IsTrue(succeed2);
+
+            TestDeleteTask(newtask, user, ac); //delete the task
         }
-
-        [TestMethod]
-        public void TestDeleteTask()
+  
+        public void TestDeleteTask(Task newtask, User user, AuthorizationCookie ac)
         {
-            var (user, ac) = db.GetUser("a", "a");
+            //refresh the user
+            (user, _) = db.GetUser("a", "a");
+            int totalTasks = user.Tasks.Count;
 
-            Task to_delete = user.Tasks[0];
+            Task to_delete = newtask;
 
-            (bool succeed,string _) = db.DeleteTask(to_delete, ac.Value);
+            (bool succeed, _) = db.DeleteTask(to_delete, ac);
             Assert.IsTrue(succeed);
+
+            (user, _) = db.GetUser("a", "a");
+
+            Assert.IsTrue(user.Tasks.Count == totalTasks - 1);
         }
 
     }

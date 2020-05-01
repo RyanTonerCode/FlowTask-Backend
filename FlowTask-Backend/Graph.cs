@@ -44,6 +44,10 @@ namespace FlowTask_Backend
             Adjacencies = new List<(int, int)>();
 
             Nodes = nodes;
+
+            if (string.IsNullOrEmpty(DB_Adjacency))
+                return;
+
             //process adjacencies by semi-colon delimited values
             var tuples = DB_Adjacency.Split(';');
             foreach (var s in tuples)
@@ -64,6 +68,9 @@ namespace FlowTask_Backend
         /// <returns></returns>
         public string GetDBFormatAdjacency()
         {
+            if (Adjacencies.Count == 0)
+                return "";
+
             StringBuilder sb = new StringBuilder();
             foreach (var (X, Y) in Adjacencies)
                 sb.Append(X).Append(",").Append(Y).Append(";");
@@ -93,7 +100,7 @@ namespace FlowTask_Backend
         public List<Node> GetNeighbors(int NodeIndex)
         {
             //cool functional code to do this
-            var neighbors = Adjacencies.Where(x => x.X == NodeIndex).Select(x => Nodes[x.Y]).ToList();
+            List<Node> neighbors = Adjacencies.Where(x => x.X == NodeIndex).Select(x => Nodes[x.Y]).ToList();
 
             //Sort the nodes first
             neighbors.Sort(CompareNodes);
@@ -128,15 +135,11 @@ namespace FlowTask_Backend
         public DateTime GetSoonestDate()
         {
             //return the min date from the incomplete nodes.
-            var incomplete = Nodes.Where(x => !x.Complete);
+            IEnumerable<Node> incomplete = Nodes.Where(x => !x.Complete);
 
-            //return the last node if there are none ncomplete
+            //return the last node if there are none incomplete
             if (incomplete.Count() == 0)
-            {
-                if(Nodes.Count > 0)
-                    return Nodes[0].Date;
-                return DateTime.Now;
-            }
+                return Nodes.Count > 0 ? Nodes[0].Date : DateTime.Now;
 
             //otherwise actually return the min
             return incomplete.Min(x => x.Date);
