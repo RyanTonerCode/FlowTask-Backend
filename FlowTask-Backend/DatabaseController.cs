@@ -159,10 +159,12 @@ namespace FlowTask_Backend
         {
             //SET THIS DB PATH TO WHERE IT NEEDS TO BE
             string dbpath;
-            if(IsLocal)
-                dbpath = @"C:\Users\Ryan\Source\Repos\FlowTask-Backend\FlowTask-Backend\flowtaskdb.db";
+
+            if (IsLocal)
+                dbpath = Directory.GetCurrentDirectory() + @"\flowtaskdb.db";
             else
-                dbpath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName + @"\flowtaskdb.db";
+                dbpath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName + @"\flowtaskdb.db";
+
             connection = new SQLiteConnection("Data Source=" + dbpath);
             connection.Open();
         }
@@ -529,7 +531,16 @@ namespace FlowTask_Backend
             {
                 sdr.Read();
 
-                return sdr.GetInt32(0);
+                int to_return = 0;
+                try
+                {
+                    to_return = sdr.GetInt32(0);
+                }
+                catch(Exception) { 
+                    to_return = 0; 
+                }
+                return to_return;
+                
             }
             else
                 return 0;
