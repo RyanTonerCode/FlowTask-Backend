@@ -1,6 +1,7 @@
 ﻿using FlowTask_Backend;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 
 namespace FlowTask_Test
 {
@@ -70,13 +71,14 @@ namespace FlowTask_Test
 
         [TestMethod]
         public void TestWriteTask()
-        {        
+        {
             DateTime date = DateTime.Now.AddDays(14);
             Task newtask = new Task("Project", date, "Research Paper", 16);
 
             (User user, AuthorizationCookie? ac) = db.GetUser("a", "a");
             (bool succeeded, _, Task fullTask) = db.WriteTask(newtask, ac.Value);
             Assert.IsTrue(succeeded);
+            Assert.AreEqual(fullTask.UserID, user.UserID);
             Assert.AreEqual(newtask.AssignmentName, fullTask.AssignmentName);
             Assert.AreEqual(newtask.Category, fullTask.Category);
 
@@ -88,7 +90,7 @@ namespace FlowTask_Test
             Node node1 = newtask.Decomposition.GetSoonestNode();
             node1.SetCompleteStatus(true);
 
-            (bool succeed, _)  = db.UpdateComplete(ac, user.UserID, node1.NodeID,true);
+            (bool succeed, _) = db.UpdateComplete(ac, user.UserID, node1.NodeID,true);
 
             Assert.IsTrue(succeed);
 
@@ -97,20 +99,27 @@ namespace FlowTask_Test
 
             Assert.IsTrue(node2.Date > node1.Date);
 
-            (bool succeed2, _) = db.UpdateComplete(ac, user.UserID, newtask.Decomposition.GetSoonestNode().NodeID, true);
+            (bool succeed2, _) = db.UpdateComplete(ac, user.UserID, node2.NodeID, true);
 
             Assert.IsTrue(succeed2);
 
-            TestDeleteTask(newtask, user, ac); //delete the task
+            //refresh the user
+            (user, _) = db.GetUser("a", "a");
+
+            Task updatedTask = user.Tasks.First(x => x.TaskID == newtask.TaskID);
+            Assert.IsTrue(updatedTask.RemainingFlowSteps == newtask.RemainingFlowSteps);
+
+            Assert.IsTrue(updatedTask.Decomposition.Nodes.First(x => x.NodeIndex == node1.NodeIndex).Complete);
+            Assert.IsTrue(updatedTask.Decomposition.Nodes.First(x => x.NodeIndex == node2.NodeIndex).Complete);
+
+            TestDeleteTask(updatedTask, user, ac); //delete the task
         }
   
-        public void TestDeleteTask(Task newtask, User user, AuthorizationCookie ac)
+        public void TestDeleteTask(Task to_delete, User user, AuthorizationCookie ac)
         {
             //refresh the user
             (user, _) = db.GetUser("a", "a");
             int totalTasks = user.Tasks.Count;
-
-            Task to_delete = newtask;
 
             (bool succeed, _) = db.DeleteTask(to_delete, ac);
             Assert.IsTrue(succeed);
@@ -118,6 +127,7 @@ namespace FlowTask_Test
             (user, _) = db.GetUser("a", "a");
 
             Assert.IsTrue(user.Tasks.Count == totalTasks - 1);
+            Assert.IsNull(user.Tasks.Find(x => x.TaskID == to_delete.TaskID));
         }
 
     }
